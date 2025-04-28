@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Ablauf Holstein</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f2f2f2;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #zeitX {
+      font-size: 1.2rem;
+      padding: 5px;
+    }
+    #ereignisse {
+      margin-top: 30px;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .ereignis {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 8px;
+      background: white;
+      transition: background 0.3s, color 0.3s, border 0.3s;
+    }
+    .highlight {
+      border: 2px solid gold;
+    }
+    .ereignis button {
+      padding: 5px 10px;
+      font-size: 0.9rem;
+    }
+    .zeitinfo {
+      font-size: 0.8rem;
+      margin-left: 10px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Holstein Ablauf-Ticker</h1>
+  <label for="zeitX">Setze X (Anpfiff): </label>
+  <input type="time" id="zeitX">
+  <div id="ereignisse"></div>
+
+  <script>
+    const events = [
+      { offset: -165, text: "ASL Einrichten, Systeme hochfahren" },
+      { offset: -150, text: "Stadionrundgang" },
+      { offset: -135, text: "Vorbesprechung San-Dienst" },
+      { offset: -120, text: "Stadionöffnung" },
+      { offset: -105, text: "Nicht einsatzbereite Trupps abfragen" },
+      { offset: -90,  text: "Ggf. RTM an angedachten Standort verlegen" },
+      { offset: -45,  text: "Kurvengespräch" },
+      { offset: -25,  text: "Notfallmedizinische Absprache Teamärzte" },
+      { offset: -10,  text: "Ausrücken Spielfeldrand 1. Halbzeit" },
+      { offset: 0,    text: "Beginn 1. Halbzeit" },
+      { offset: 30,   text: "Verlaufsgespräch" },
+      { offset: 55,   text: "Ausrücken Spielfeldrand 2. Halbzeit" },
+      { offset: 90,   text: "Rückbau Verpflegung veranlassen" },
+      { offset: 100,  text: "Fahrzeuge für Rückbau holen lassen" },
+      { offset: 105,  text: "Spielende (geplant)" },
+      { offset: 130,  text: "Rückbau UHS (lageabhängig)" },
+      { offset: 140,  text: "Abschlussmeldung erstellen" },
+      { offset: 145,  text: "ETB exportieren, Mail erstellen" },
+      { offset: 150,  text: "Nachbesprechung San-Dienst" }
+    ];
+
+    let gesetzteZeit = null;
+    const quittierteEvents = new Set();
+
+    document.getElementById("zeitX").addEventListener("change", function () {
+  const [h, m] = this.value.split(":").map(Number);
+  const now = new Date();  // aktuelles Datum + Uhrzeit
+  // neues Datum: Jahr, Monat (0–11), Tag, Stunde, Minute
+  gesetzteZeit = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    h, m, 0, 0
+  );
+});
+
+    function updateEreignisse() {
+      const container = document.getElementById("ereignisse");
+      container.innerHTML = "";
+
+      if (!gesetzteZeit) return;
+
+      const jetzt = new Date();  // liefert immer einen gültigen Date-Wert
+
+      events.forEach((event, index) => {
+        const id = `event-${index}`;
+        if (quittierteEvents.has(id)) return;
+
+        const eventTime = new Date(gesetzteZeit.getTime() + event.offset * 60000);
+        const diffMin = (eventTime - jetzt) / 60000;
+
+        if (diffMin > 10) return;
+
+        const div = document.createElement("div");
+        div.className = "ereignis";
+
+        const label = document.createElement("span");
+        label.textContent = `${event.text}`;
+
+        const zeitInfo = document.createElement("span");
+        zeitInfo.className = "zeitinfo";
+        const diffSek = Math.round((eventTime - jetzt) / 1000);
+        if (Math.abs(diffSek) < 30) {
+          zeitInfo.textContent = "jetzt";
+        } else if (diffSek > 0) {
+          zeitInfo.textContent = `in ${Math.floor(diffSek / 60)} Min`;
+        } else {
+          zeitInfo.textContent = `vor ${Math.abs(Math.floor(diffSek / 60))} Min`;
+        }
+
+        const btn = document.createElement("button");
+        btn.textContent = "Quittieren";
+        btn.onclick = () => {
+          quittierteEvents.add(id);
+          updateEreignisse(); // sofort neu rendern
+        };
+
+        if (diffMin <= 0) {
+          div.classList.add("highlight");
+          div.style.color = "#000";
+        } else {
+          const grauLevel = Math.max(0, Math.min(1, 1 - diffMin / 10));
+          const grauWert = Math.round(100 + grauLevel * 100);
+          div.style.color = `rgb(${grauWert}, ${grauWert}, ${grauWert})`;
+        }
+
+        const leftBox = document.createElement("div");
+        leftBox.style.display = "flex";
+        leftBox.style.flexDirection = "column";
+        leftBox.style.alignItems = "flex-start";
+        leftBox.appendChild(label);
+        leftBox.appendChild(zeitInfo);
+
+        div.appendChild(leftBox);
+        div.appendChild(btn);
+        container.appendChild(div);
+      });
+    }
+
+    setInterval(updateEreignisse, 1000);
+  </script>
+</body>
+</html>
